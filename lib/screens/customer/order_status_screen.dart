@@ -13,6 +13,10 @@ class OrderStatusScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Status Pesanan'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: Consumer2<OrderProvider, AuthProvider>(
         builder: (context, orderProvider, authProvider, _) {

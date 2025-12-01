@@ -27,7 +27,9 @@ class BaristaDashboardScreen extends StatelessWidget {
       body: Consumer<OrderProvider>(
         builder: (context, orderProvider, _) {
           final pendingOrders = orderProvider.getPendingOrders();
+          final confirmedOrders = orderProvider.getConfirmedOrders();
           final processingOrders = orderProvider.getProcessingOrders();
+          final readyOrders = orderProvider.getReadyOrders();
           final completedOrders = orderProvider.getCompletedOrders();
 
           return SingleChildScrollView(
@@ -35,7 +37,6 @@ class BaristaDashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Consumer<AuthProvider>(
                   builder: (context, authProvider, _) {
                     return Column(
@@ -43,8 +44,7 @@ class BaristaDashboardScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Selamat Datang, ${authProvider.currentUser?.name}',
-                          style:
-                              Theme.of(context).textTheme.headlineSmall,
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -56,7 +56,6 @@ class BaristaDashboardScreen extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 24),
-                // Stats Cards
                 Row(
                   children: [
                     Expanded(
@@ -70,25 +69,33 @@ class BaristaDashboardScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
+                        title: 'Dikonfirmasi',
+                        count: confirmedOrders.length,
+                        color: Colors.blue,
+                        icon: Icons.check_circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
                         title: 'Diproses',
                         count: processingOrders.length,
-                        color: Colors.blue,
+                        color: Colors.purple,
                         icon: Icons.hourglass_bottom,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        title: 'Selesai',
-                        count: completedOrders.length,
+                        title: 'Siap Diambil',
+                        count: readyOrders.length,
                         color: Colors.green,
-                        icon: Icons.check_circle,
+                        icon: Icons.done_all,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 32),
-                // Pending Orders
                 Text(
                   'Pesanan Masuk',
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -203,7 +210,111 @@ class BaristaDashboardScreen extends StatelessWidget {
                     }).toList(),
                   ),
                 const SizedBox(height: 32),
-                // Processing Orders
+                Text(
+                  'Pesanan Dikonfirmasi',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 16),
+                if (confirmedOrders.isEmpty)
+                  Center(
+                    child: Text(
+                      'Tidak ada pesanan dikonfirmasi',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  Column(
+                    children: confirmedOrders.map((order) {
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    order.id,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Dikonfirmasi',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Items:',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              ...order.items.take(3).map((item) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '• ${item.productName} (${item.size}) x${item.quantity}',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                );
+                              }).toList(),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 36,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.purple,
+                                  ),
+                                  onPressed: () {
+                                    orderProvider.updateOrderStatus(
+                                      order.id,
+                                      'processing',
+                                    );
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Pesanan mulai diproses',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    'Mulai Proses',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                const SizedBox(height: 32),
                 Text(
                   'Sedang Diproses',
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -243,13 +354,13 @@ class BaristaDashboardScreen extends StatelessWidget {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.withOpacity(0.2),
+                                      color: Colors.purple.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Text(
                                       'Diproses',
                                       style: TextStyle(
-                                        color: Colors.blue,
+                                        color: Colors.purple,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -275,34 +386,265 @@ class BaristaDashboardScreen extends StatelessWidget {
                                 );
                               }).toList(),
                               const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 36,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                        ),
+                                        onPressed: () {
+                                          orderProvider.updateOrderStatus(
+                                            order.id,
+                                            'ready',
+                                          );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Pesanan siap diambil',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text(
+                                          'Tandai Siap',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 36,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppTheme.primaryColor,
+                                        ),
+                                        onPressed: () {
+                                          orderProvider.updateOrderStatus(
+                                            order.id,
+                                            'completed',
+                                          );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Pesanan selesai',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text(
+                                          'Selesaikan',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                const SizedBox(height: 32),
+                Text(
+                  'Siap Diambil',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 16),
+                if (readyOrders.isEmpty)
+                  Center(
+                    child: Text(
+                      'Tidak ada pesanan siap diambil',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  Column(
+                    children: readyOrders.map((order) {
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    order.id,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Siap Diambil',
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Items:',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              ...order.items.take(3).map((item) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '• ${item.productName} (${item.size}) x${item.quantity}',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                );
+                              }).toList(),
+                              if (order.items.length > 3)
+                                Text(
+                                  '• +${order.items.length - 3} item lainnya',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              const SizedBox(height: 12),
                               SizedBox(
                                 width: double.infinity,
                                 height: 36,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        AppTheme.successColor,
+                                    backgroundColor: AppTheme.primaryColor,
                                   ),
                                   onPressed: () {
                                     orderProvider.updateOrderStatus(
                                       order.id,
-                                      'ready',
+                                      'completed',
                                     );
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          'Pesanan siap diambil',
+                                          'Pesanan selesai',
                                         ),
                                       ),
                                     );
                                   },
                                   child: const Text(
-                                    'Tandai Siap',
+                                    'Pesanan Selesai',
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                const SizedBox(height: 32),
+                Text(
+                  'Pesanan Selesai',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 16),
+                if (completedOrders.isEmpty)
+                  Center(
+                    child: Text(
+                      'Tidak ada pesanan selesai',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  Column(
+                    children: completedOrders.map((order) {
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    order.id,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Selesai',
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Items:',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              ...order.items.take(3).map((item) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '• ${item.productName} (${item.size}) x${item.quantity}',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                );
+                              }).toList(),
+                              if (order.items.length > 3)
+                                Text(
+                                  '• +${order.items.length - 3} item lainnya',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                             ],
                           ),
                         ),

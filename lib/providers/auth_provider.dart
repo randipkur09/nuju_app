@@ -6,12 +6,14 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isLoggedIn = false;
+  String? _lastEmail;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _isLoggedIn;
   String? get userRole => _currentUser?.role;
+  String? get lastEmail => _lastEmail;
 
   // Mock user data - Replace dengan API call
   final Map<String, User> _mockUsers = {
@@ -77,6 +79,7 @@ class AuthProvider extends ChangeNotifier {
 
       _mockUsers[email] = newUser;
       _currentUser = newUser;
+      _lastEmail = email;
       _isLoggedIn = true;
       _isLoading = false;
       notifyListeners();
@@ -109,6 +112,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       _currentUser = user;
+      _lastEmail = email;
       _isLoggedIn = true;
       _isLoading = false;
       notifyListeners();
@@ -130,6 +134,7 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = null;
       _isLoggedIn = false;
       _errorMessage = null;
+      _lastEmail = null;
     } finally {
       _isLoading = false;
       notifyListeners();

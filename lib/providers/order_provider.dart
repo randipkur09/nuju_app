@@ -65,13 +65,19 @@ class OrderProvider extends ChangeNotifier {
   }
 
   List<Order> getPendingOrders() {
-    return _orders
-        .where((order) => order.status == 'pending' || order.status == 'confirmed')
-        .toList();
+    return _orders.where((order) => order.status == 'pending').toList();
+  }
+
+  List<Order> getConfirmedOrders() {
+    return _orders.where((order) => order.status == 'confirmed').toList();
   }
 
   List<Order> getProcessingOrders() {
     return _orders.where((order) => order.status == 'processing').toList();
+  }
+
+  List<Order> getReadyOrders() {
+    return _orders.where((order) => order.status == 'ready').toList();
   }
 
   List<Order> getCompletedOrders() {
