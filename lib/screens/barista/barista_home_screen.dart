@@ -12,7 +12,8 @@ class BaristaHomeScreen extends StatefulWidget {
   State<BaristaHomeScreen> createState() => _BaristaHomeScreenState();
 }
 
-class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTickerProviderStateMixin {
+class _BaristaHomeScreenState extends State<BaristaHomeScreen>
+    with SingleTickerProviderStateMixin {
   final FirestoreService _firestoreService = FirestoreService();
   late TabController _tabController;
 
@@ -31,11 +32,22 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Barista Dashboard'),
+        title: const Text(
+          'Barista Dashboard',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: AppTheme.primaryGreen,
+        elevation: 4,
+        shadowColor: AppTheme.primaryGreen.withOpacity(0.3),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               final shouldLogout = await showDialog<bool>(
                 context: context,
@@ -49,7 +61,10 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Logout'),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
@@ -61,17 +76,39 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
             },
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: AppTheme.primaryGreen,
-          tabs: const [
-            Tab(text: 'Pending'),
-            Tab(text: 'Processing'),
-            Tab(text: 'Ready'),
-            Tab(text: 'History'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: AppTheme.primaryGreen,
+              unselectedLabelColor: Colors.grey[600],
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+              indicator: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppTheme.primaryGreen,
+                    width: 3,
+                  ),
+                ),
+              ),
+              indicatorSize: TabBarIndicatorSize.label,
+              tabs: const [
+                Tab(text: 'Pending'),
+                Tab(text: 'Processing'),
+                Tab(text: 'Ready'),
+                Tab(text: 'History'),
+              ],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -87,21 +124,14 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
   }
 
   Widget _buildOrdersList(String status) {
-    print('[v0] BaristaHomeScreen - Loading orders with status: $status');
-    
     return StreamBuilder<List<OrderModel>>(
       stream: _firestoreService.getOrdersByStatus(status),
       builder: (context, snapshot) {
-        print('[v0] BaristaHomeScreen - Connection state: ${snapshot.connectionState}');
-        print('[v0] BaristaHomeScreen - Has data: ${snapshot.hasData}');
-        print('[v0] BaristaHomeScreen - Orders count: ${snapshot.data?.length ?? 0}');
-        
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          print('[v0] BaristaHomeScreen - Error: ${snapshot.error}');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -131,10 +161,7 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
         }
 
         List<OrderModel> orders = snapshot.data!;
-
         orders.sort((a, b) => a.orderDate.compareTo(b.orderDate));
-
-        print('[v0] BaristaHomeScreen - Displaying ${orders.length} orders');
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
@@ -150,6 +177,10 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
   Widget _buildOrderCard(OrderModel order, String currentStatus) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -178,14 +209,33 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
                     ),
                   ],
                 ),
-                Text(
-                  _formatTime(order.createdAt),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(currentStatus).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    currentStatus.toUpperCase(),
+                    style: TextStyle(
+                      color: _getStatusColor(currentStatus),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatTime(order.createdAt),
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 12,
+              ),
             ),
             const Divider(height: 24),
             ...order.items.map((item) => Padding(
@@ -233,11 +283,11 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
 
     switch (currentStatus) {
       case AppConstants.statusPending:
-        buttonText = 'Start';
+        buttonText = 'Start Making';
         nextStatus = AppConstants.statusProcessing;
         break;
       case AppConstants.statusProcessing:
-        buttonText = 'Ready';
+        buttonText = 'Mark Ready';
         nextStatus = AppConstants.statusReady;
         break;
       case AppConstants.statusReady:
@@ -251,9 +301,19 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
     return ElevatedButton(
       onPressed: () => _updateOrderStatus(order.id, nextStatus),
       style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        backgroundColor: _getStatusColor(currentStatus),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
-      child: Text(buttonText),
+      child: Text(
+        buttonText,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -297,6 +357,21 @@ class _BaristaHomeScreenState extends State<BaristaHomeScreen> with SingleTicker
       return '${difference.inHours}h ago';
     } else {
       return '${dateTime.day}/${dateTime.month} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case AppConstants.statusPending:
+        return Colors.orange;
+      case AppConstants.statusProcessing:
+        return Colors.blue;
+      case AppConstants.statusReady:
+        return Colors.green;
+      case AppConstants.statusCompleted:
+        return Colors.grey;
+      default:
+        return AppTheme.primaryGreen;
     }
   }
 }
