@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "348114043946",
+    "project_id": "nuju-coffee",
+    "storage_bucket": "nuju-coffee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348114043946:android:b78dae69c29c6661796f53",
+        "android_client_info": {
+          "package_name": "com.example.nujucoffee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbAjdMhuvlE9WP_QYv_bHxw34WEoiw8t0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
