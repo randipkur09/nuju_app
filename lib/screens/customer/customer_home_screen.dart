@@ -1,3 +1,4 @@
+// screens/customer/customer_home_screen.dart
 import 'package:flutter/material.dart';
 import '../../models/menu_model.dart';
 import '../../models/order_model.dart';
@@ -6,7 +7,7 @@ import '../../utils/theme.dart';
 import 'customer_orders_screen.dart';
 import 'customer_favorites_screen.dart';
 import 'cart_screen.dart';
-import 'product_detail_screen.dart'; // Tambahkan import ini
+import 'product_detail_screen.dart';
 import '../../services/auth_service.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -27,7 +28,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final List<Widget> screens = [
       _buildHomeContent(),
       const CustomerOrdersScreen(),
-      const CustomerFavoritesScreen(),
+      CustomerFavoritesScreen(
+        onAddToCart: (product, quantity) {
+          _addToCartWithQuantity(product, quantity);
+        },
+      ),
     ];
 
     return Scaffold(
@@ -309,7 +314,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget _buildMenuCard(MenuModel menu) {
     return GestureDetector(
       onTap: () {
-        // Navigasi ke Product Detail Screen
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -341,7 +345,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Container
             Expanded(
               child: Hero(
                 tag: 'product-${menu.id}',
@@ -414,7 +417,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             ),
                           ),
                         ),
-                      // Featured badge di pojok kiri atas
                       if (menu.isFeatured == true)
                         Positioned(
                           top: 8,
@@ -449,7 +451,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             ),
                           ),
                         ),
-                      // Discount badge di pojok kanan atas
                       if (menu.hasDiscount)
                         Positioned(
                           top: 8,
@@ -478,14 +479,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 ),
               ),
             ),
-            // Content Container
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Nama produk
                   Text(
                     menu.name,
                     style: const TextStyle(
@@ -497,7 +496,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  // Harga
                   Row(
                     children: [
                       if (menu.hasDiscount)
@@ -522,7 +520,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Rating jika ada
                   if (menu.rating != null && menu.rating! > 0)
                     Row(
                       children: [
@@ -570,7 +567,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       ],
                     ),
                   const SizedBox(height: 8),
-                  // Add to Cart button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(

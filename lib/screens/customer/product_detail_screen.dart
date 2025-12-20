@@ -1,6 +1,7 @@
 // screens/customer/product_detail_screen.dart
 import 'package:flutter/material.dart';
 import '../../models/menu_model.dart';
+import '../../services/favorites_service.dart';
 import '../../utils/theme.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -18,49 +19,107 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  final FavoritesService _favoritesService = FavoritesService();
   int _quantity = 1;
   String? _specialNotes;
+  bool _isFavorited = false;
+  bool _isLoadingFavorite = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFavoriteStatus();
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    final isFav = await _favoritesService.isFavorited(widget.product.id);
+    setState(() {
+      _isFavorited = isFav;
+      _isLoadingFavorite = false;
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    try {
+      setState(() {
+        _isLoadingFavorite = true;
+      });
+
+      final newStatus = await _favoritesService.toggleFavorite(widget.product);
+      
+      setState(() {
+        _isFavorited = newStatus;
+        _isLoadingFavorite = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  newStatus ? Icons.favorite : Icons.favorite_border,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  newStatus
+                      ? 'Added to favorites'
+                      : 'Removed from favorites',
+                ),
+              ],
+            ),
+            backgroundColor: newStatus ? Colors.red : AppTheme.textSecondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingFavorite = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasDiscount = widget.product.hasDiscount;
-    
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Header dengan back button dan cart
             _buildHeader(),
-            
-            // Konten utama dengan scroll
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 100), // Space untuk bottom bar
+                padding: const EdgeInsets.only(bottom: 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Gambar produk
                     _buildProductImage(),
-                    
-                    // Info produk
                     _buildProductInfo(),
-                    
-                    // Deskripsi
                     _buildDescription(),
-                    
-                    // Ingredients
                     _buildIngredients(),
-                    
-                    // Tags
                     _buildTags(),
-                    
-                    // Special Notes
                     _buildSpecialNotes(),
-                    
-                    // Availability
                     _buildAvailability(),
-                    
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -69,8 +128,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
       ),
-      
-      // Bottom navigation bar
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
@@ -89,7 +146,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       child: Row(
         children: [
-          // Back button
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -107,10 +163,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
-          
           const SizedBox(width: 12),
-          
-          // Title
           Expanded(
             child: Text(
               'Product Details',
@@ -121,15 +174,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
-          
-          // Favorite button (optional)
-          IconButton(
-            icon: const Icon(Icons.favorite_outline, size: 22),
-            onPressed: () {},
-            style: IconButton.styleFrom(
-              foregroundColor: AppTheme.textSecondary,
-            ),
-          ),
+          // Favorite button
+          _isLoadingFavorite
+              ? SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                )
+              : IconButton(
+                  icon: Icon(
+                    _isFavorited ? Icons.favorite : Icons.favorite_outline,
+                    size: 24,
+                  ),
+                  onPressed: _toggleFavorite,
+                  style: IconButton.styleFrom(
+                    foregroundColor: _isFavorited ? Colors.red : AppTheme.textSecondary,
+                  ),
+                ),
         ],
       ),
     );
@@ -148,7 +218,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       child: Stack(
         children: [
-          // Main image
           Hero(
             tag: 'product-${widget.product.id}',
             child: ClipRRect(
@@ -187,8 +256,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
             ),
           ),
-          
-          // Featured badge
           if (widget.product.isFeatured)
             Positioned(
               top: 16,
@@ -230,8 +297,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ),
-          
-          // Discount badge
           if (widget.product.hasDiscount)
             Positioned(
               top: 16,
@@ -275,7 +340,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Nama dan kategori
           Text(
             widget.product.name,
             style: const TextStyle(
@@ -285,7 +349,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          
           Text(
             widget.product.category,
             style: TextStyle(
@@ -293,13 +356,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               color: AppTheme.textSecondary,
             ),
           ),
-          
           const SizedBox(height: 16),
-          
-          // Harga
           Row(
             children: [
-              // Harga setelah diskon
               Text(
                 widget.product.formattedPrice,
                 style: TextStyle(
@@ -308,10 +367,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   color: AppTheme.primaryColor,
                 ),
               ),
-              
               const SizedBox(width: 8),
-              
-              // Harga asli dengan coretan
               if (hasDiscount)
                 Text(
                   widget.product.formattedOriginalPrice ?? '',
@@ -323,15 +379,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
             ],
           ),
-          
           const SizedBox(height: 16),
-          
-          // Rating, waktu, kalori
           Wrap(
             spacing: 12,
             runSpacing: 8,
             children: [
-              // Rating
               if (widget.product.formattedRating != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -362,8 +414,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                 ),
-              
-              // Waktu persiapan
               if (widget.product.formattedPreparationTime != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -394,8 +444,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                 ),
-              
-              // Kalori
               if (widget.product.calories != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -670,7 +718,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Quantity selector row
             Row(
               children: [
                 Text(
@@ -740,10 +787,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            // Price and Add to Cart button
             Row(
               children: [
                 Column(
@@ -767,10 +811,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ],
                 ),
-                
                 const Spacer(),
-                
-                // Add to Cart button
                 SizedBox(
                   width: 180,
                   height: 50,

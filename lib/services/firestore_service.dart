@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/menu_model.dart';
 import '../models/order_model.dart';
 import '../utils/constants.dart';
@@ -21,7 +22,9 @@ class FirestoreService {
   // Add menu item (Admin only)
   Future<String?> addMenuItem(MenuModel menuItem) async {
     try {
-      await _firestore.collection(AppConstants.menuCollection).add(menuItem.toMap());
+      await _firestore
+          .collection(AppConstants.menuCollection)
+          .add(menuItem.toMap());
       return null; // Success
     } catch (e) {
       return e.toString();
@@ -88,10 +91,10 @@ class FirestoreService {
   // Create order
   Future<String?> createOrder(OrderModel order) async {
     try {
-      final docRef = await _firestore
+      await _firestore
           .collection(AppConstants.ordersCollection)
           .add(order.toMap());
-      
+
       return null; // Return null on success (no error)
     } catch (e) {
       return e.toString(); // Return error message on failure
@@ -105,13 +108,12 @@ class FirestoreService {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-          final orders = snapshot.docs
-              .map((doc) => OrderModel.fromFirestore(doc))
-              .toList();
-          // Sort in memory instead of Firestore
-          orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
-          return orders;
-        });
+      final orders =
+          snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
+      // Sort in memory instead of Firestore
+      orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+      return orders;
+    });
   }
 
   // Get all orders (Barista/Admin view)
@@ -120,13 +122,12 @@ class FirestoreService {
         .collection(AppConstants.ordersCollection)
         .snapshots()
         .map((snapshot) {
-          final orders = snapshot.docs
-              .map((doc) => OrderModel.fromFirestore(doc))
-              .toList();
-          // Sort in memory instead of Firestore
-          orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
-          return orders;
-        });
+      final orders =
+          snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
+      // Sort in memory instead of Firestore
+      orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+      return orders;
+    });
   }
 
   // Update order status (Barista/Admin)
@@ -160,25 +161,24 @@ class FirestoreService {
 
   // Get orders by status for barista screen
   Stream<List<OrderModel>> getOrdersByStatus(String status) {
-    print('[v0] Getting orders with status: $status');
+    debugPrint('[v0] Getting orders with status: $status');
     return _firestore
         .collection(AppConstants.ordersCollection)
         .where('status', isEqualTo: status)
         .snapshots()
         .map((snapshot) {
-          print('[v0] Found ${snapshot.docs.length} orders with status: $status');
-          final orders = snapshot.docs
-              .map((doc) => OrderModel.fromFirestore(doc))
-              .toList();
-          // Sort in memory by orderDate ascending
-          orders.sort((a, b) => a.orderDate.compareTo(b.orderDate));
-          return orders;
-        });
+      debugPrint('[v0] Found ${snapshot.docs.length} orders with status: $status');
+      final orders =
+          snapshot.docs.map((doc) => OrderModel.fromFirestore(doc)).toList();
+      // Sort in memory by orderDate ascending
+      orders.sort((a, b) => a.orderDate.compareTo(b.orderDate));
+      return orders;
+    });
   }
 
   // Get customer orders for order history
   Stream<QuerySnapshot> getCustomerOrders(String userId) {
-    print('[v0] Getting orders for user: $userId');
+    debugPrint('[v0] Getting orders for user: $userId');
     return _firestore
         .collection(AppConstants.ordersCollection)
         .where('userId', isEqualTo: userId)
@@ -202,5 +202,70 @@ class FirestoreService {
                   'createdAt': doc.data()['createdAt'],
                 })
             .toList());
+  }
+
+  // ============ FAVORITES OPERATIONS ============
+
+  // users/{uid}/favorites/{menuId}
+  CollectionReference<Map<String, dynamic>> _favoritesRef(String userId) {
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(userId)
+        .collection('favorites');
+  }
+
+  // Stream daftar favorites
+  Stream<List<MenuModel>> getFavoriteItems(String userId) {
+    return _favoritesRef(userId)
+        .orderBy('favoritedAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => MenuModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Stream status favorite (untuk icon heart realtime)
+  Stream<bool> isFavoriteStream(String userId, String menuId) {
+    return _favoritesRef(userId).doc(menuId).snapshots().map((doc) => doc.exists);
+  }
+
+  // Toggle favorite (kalau sudah ada -> delete, kalau belum -> set)
+  Future<String?> toggleFavorite({
+    required String userId,
+    required MenuModel menu,
+  }) async {
+    try {
+      final docRef = _favoritesRef(userId).doc(menu.id);
+      final doc = await docRef.get();
+
+      if (doc.exists) {
+        await docRef.delete();
+      } else {
+        final data = menu.toMap();
+        data['favoritedAt'] = FieldValue.serverTimestamp();
+        await docRef.set(data);
+      }
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // ============ ALIAS (biar cocok sama pemanggilan UI kamu) ============
+
+  // Kalau customer_favorites_screen.dart kamu manggil getFavorites(uid)
+  Stream<List<MenuModel>> getFavorites(String userId) => getFavoriteItems(userId);
+
+  // Kalau customer_favorites_screen.dart kamu manggil removeFromFavorites(...)
+  Future<String?> removeFromFavorites({
+    required String userId,
+    required String menuId,
+  }) async {
+    try {
+      await _favoritesRef(userId).doc(menuId).delete();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
   }
 }
