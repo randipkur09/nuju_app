@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart'; // ✅ tambah
 import '../../models/order_model.dart';
 import '../../services/firestore_service.dart';
 import '../../utils/theme.dart';
+import 'payment_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final List<OrderItem> cartItems;
@@ -16,6 +18,16 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   bool _isLoading = false;
+
+  // ✅ formatter Rupiah titik
+  String _formatRupiah(num value) {
+    final f = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
+    return f.format(value);
+  }
 
   double get _totalPrice {
     return widget.cartItems.fold(
@@ -192,7 +204,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // Details
             Expanded(
               child: Column(
@@ -210,8 +222,10 @@ class _CartScreenState extends State<CartScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+
+                  // ✅ harga item pakai format titik
                   Text(
-                    'Rp ${item.price.toStringAsFixed(0)}',
+                    _formatRupiah(item.price),
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
@@ -221,7 +235,7 @@ class _CartScreenState extends State<CartScreen> {
                 ],
               ),
             ),
-            
+
             // Quantity Controls
             Container(
               decoration: BoxDecoration(
@@ -274,7 +288,7 @@ class _CartScreenState extends State<CartScreen> {
                 ],
               ),
             ),
-            
+
             // Remove Button
             IconButton(
               icon: Icon(
@@ -327,8 +341,9 @@ class _CartScreenState extends State<CartScreen> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
+                // ✅ total pakai format titik
                 Text(
-                  'Rp ${_totalPrice.toStringAsFixed(0)}',
+                  _formatRupiah(_totalPrice),
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -352,7 +367,7 @@ class _CartScreenState extends State<CartScreen> {
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? SizedBox(
+                    ? const SizedBox(
                         height: 24,
                         width: 24,
                         child: CircularProgressIndicator(
@@ -404,94 +419,101 @@ class _CartScreenState extends State<CartScreen> {
       );
 
       final error = await _firestoreService.createOrder(order);
+      if (error != null) throw Exception(error);
 
-      if (error != null) {
-        throw Exception(error);
-      }
+      if (!mounted) return;
 
-      if (mounted) {
-        widget.cartItems.clear(); // Clear the cart
-        Navigator.pop(context, true); // Return true to indicate success
-        
-        // Show success dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppTheme.backgroundColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check_circle,
-                    size: 48,
-                    color: Colors.green,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Order Placed!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Your order has been received and is being processed',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      final payment = await Navigator.push<PaymentResult>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentScreen(totalPrice: _totalPrice),
+        ),
+      );
+
+      if (payment == null) return;
+
+      widget.cartItems.clear();
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        );
-      }
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  size: 48,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Order Placed!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Metode pembayaran: ${payment.method.toUpperCase()}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.error_outline,
                   color: Colors.white,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                Text('Failed to place order: $e'),
+                Expanded(child: Text('Failed to place order: $e')),
               ],
             ),
             backgroundColor: Colors.red,

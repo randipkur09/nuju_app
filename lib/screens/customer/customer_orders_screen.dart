@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // ✅ tambah
 import '../../models/order_model.dart';
 import '../../services/firestore_service.dart';
 import '../../utils/theme.dart';
 
 class CustomerOrdersScreen extends StatelessWidget {
   const CustomerOrdersScreen({Key? key}) : super(key: key);
+
+  // ✅ formatter Rupiah titik
+  String _formatRupiah(num value) {
+    final f = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
+    return f.format(value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,11 +104,10 @@ class CustomerOrdersScreen extends StatelessWidget {
             );
           }
 
-          List<OrderModel> orders = snapshot.data!.docs
+          final orders = snapshot.data!.docs
               .map((doc) => OrderModel.fromFirestore(doc))
-              .toList();
-
-          orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+              .toList()
+            ..sort((a, b) => b.orderDate.compareTo(a.orderDate));
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -150,88 +160,90 @@ class CustomerOrdersScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Order Items
-            ...order.items.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      // Item Image
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey.shade100,
-                        ),
-                        child: item.imageUrl.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  item.imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Center(
-                                      child: Icon(
-                                        Icons.coffee_outlined,
-                                        size: 20,
-                                        color: Colors.grey.shade400,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              )
-                            : Center(
-                                child: Icon(
-                                  Icons.coffee_outlined,
-                                  size: 20,
-                                  color: Colors.grey.shade400,
-                                ),
-                              ),
+            ...order.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    // Item Image
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey.shade100,
                       ),
-                      const SizedBox(width: 12),
-                      
-                      // Item Details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.menuName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                                color: AppTheme.textPrimary,
+                      child: item.imageUrl.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                item.imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Icon(
+                                      Icons.coffee_outlined,
+                                      size: 20,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  );
+                                },
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '${item.quantity} × Rp ${item.price.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary,
+                            )
+                          : Center(
+                              child: Icon(
+                                Icons.coffee_outlined,
+                                size: 20,
+                                color: Colors.grey.shade400,
                               ),
                             ),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Item Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.menuName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              color: AppTheme.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${item.quantity} × ${_formatRupiah(item.price)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                      
-                      // Item Total
-                      Text(
-                        'Rp ${(item.price * item.quantity).toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: AppTheme.textPrimary,
-                        ),
+                    ),
+
+                    // Item Total
+                    Text(
+                      _formatRupiah(item.price * item.quantity),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppTheme.textPrimary,
                       ),
-                    ],
-                  ),
-                )),
-            
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const Divider(height: 24, thickness: 1),
-            
+
             // Order Footer
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -268,8 +280,8 @@ class CustomerOrdersScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Rp ${order.totalPrice.toStringAsFixed(0)}',
-                      style: TextStyle(
+                      _formatRupiah(order.totalPrice),
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
                         color: AppTheme.primaryColor,
@@ -286,41 +298,24 @@ class CustomerOrdersScreen extends StatelessWidget {
   }
 
   Widget _buildStatusChip(String status) {
-    Map<String, Map<String, dynamic>> statusStyles = {
-      'pending': {
-        'color': Colors.orange,
-        'icon': Icons.access_time,
-      },
-      'processing': {
-        'color': Colors.blue,
-        'icon': Icons.coffee_maker_outlined,
-      },
-      'ready': {
-        'color': AppTheme.primaryColor,
-        'icon': Icons.check_circle_outline,
-      },
-      'completed': {
-        'color': Colors.green,
-        'icon': Icons.done_all,
-      },
-      'cancelled': {
-        'color': Colors.red,
-        'icon': Icons.cancel_outlined,
-      },
+    final statusStyles = <String, Map<String, dynamic>>{
+      'pending': {'color': Colors.orange, 'icon': Icons.access_time},
+      'processing': {'color': Colors.blue, 'icon': Icons.coffee_maker_outlined},
+      'ready': {'color': AppTheme.primaryColor, 'icon': Icons.check_circle_outline},
+      'completed': {'color': Colors.green, 'icon': Icons.done_all},
+      'cancelled': {'color': Colors.red, 'icon': Icons.cancel_outlined},
     };
 
-    final style = statusStyles[status.toLowerCase()] ?? {
-      'color': Colors.grey,
-      'icon': Icons.help_outline,
-    };
+    final style = statusStyles[status.toLowerCase()] ??
+        {'color': Colors.grey, 'icon': Icons.help_outline};
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: style['color']!.withOpacity(0.1),
+        color: (style['color'] as Color).withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: style['color']!.withOpacity(0.3),
+          color: (style['color'] as Color).withOpacity(0.3),
           width: 1,
         ),
       ),

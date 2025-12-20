@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class OrderItem {
   final String menuId;
@@ -14,6 +15,19 @@ class OrderItem {
     required this.price,
     this.imageUrl = '',
   });
+
+  // ✅ formatter rupiah
+  static final NumberFormat _idr = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp',
+    decimalDigits: 0,
+  );
+
+  // ✅ harga dengan titik: Rp12.000
+  String get formattedPrice => _idr.format(price);
+
+  // ✅ subtotal item: price * quantity
+  String get formattedSubtotal => _idr.format(price * quantity);
 
   Map<String, dynamic> toMap() {
     return {
@@ -61,8 +75,18 @@ class OrderModel {
     this.customerName = 'Customer',
   }) : createdAt = createdAt ?? orderDate;
 
+  // ✅ formatter rupiah
+  static final NumberFormat _idr = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp',
+    decimalDigits: 0,
+  );
+
+  // ✅ total dengan titik: Rp120.000
+  String get formattedTotalPrice => _idr.format(totalPrice);
+
   factory OrderModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>;
     return OrderModel(
       id: doc.id,
       userId: data['userId'] ?? '',
@@ -76,7 +100,7 @@ class OrderModel {
           ? (data['completedDate'] as Timestamp).toDate()
           : null,
       assignedBarista: data['assignedBarista'],
-      createdAt: data['createdAt'] != null 
+      createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : (data['orderDate'] as Timestamp).toDate(),
       customerName: data['customerName'] ?? 'Customer',

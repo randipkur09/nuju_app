@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../utils/constants.dart';
@@ -9,6 +11,7 @@ class AuthService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? get currentUser => _auth.currentUser;
+
   UserModel? _currentUserData;
   UserModel? get currentUserData => _currentUserData;
 
@@ -18,22 +21,56 @@ class AuthService extends ChangeNotifier {
   // Get current user data from Firestore
   Future<UserModel?> getCurrentUserData() async {
     if (currentUser == null) return null;
-    
+
     try {
-      DocumentSnapshot doc = await _firestore
+      final doc = await _firestore
           .collection(AppConstants.usersCollection)
           .doc(currentUser!.uid)
           .get();
-      
+
       if (doc.exists) {
         _currentUserData = UserModel.fromFirestore(doc);
         notifyListeners();
         return _currentUserData;
       }
     } catch (e) {
-      print('Error getting user data: $e');
+      debugPrint('Error getting user data: $e');
     }
     return null;
+  }
+
+  // Helper: get role dari Firestore (biar gak tergantung _currentUserData yang kadang null)
+  Future<String?> _getRoleFromFirestore(String uid) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .get();
+
+      if (!doc.exists) return null;
+      final data = doc.data() as Map<String, dynamic>?;
+      return data?['role']?.toString();
+    } catch (e) {
+      debugPrint('Error fetching role: $e');
+      return null;
+    }
+  }
+
+  // Helper: secondary auth supaya admin tidak ketendang saat create user baru
+  Future<FirebaseAuth> _getSecondaryAuth() async {
+    FirebaseApp secondaryApp;
+
+    try {
+      secondaryApp = Firebase.app('secondary');
+    } catch (_) {
+      final primaryOptions = Firebase.app().options;
+      secondaryApp = await Firebase.initializeApp(
+        name: 'secondary',
+        options: primaryOptions,
+      );
+    }
+
+    return FirebaseAuth.instanceFor(app: secondaryApp);
   }
 
   // Register (Only for customers)
@@ -44,12 +81,11 @@ class AuthService extends ChangeNotifier {
     String? phoneNumber,
   }) async {
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Create user document in Firestore
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(userCredential.user!.uid)
@@ -62,7 +98,7 @@ class AuthService extends ChangeNotifier {
       });
 
       await getCurrentUserData();
-      return null; // Success
+      return null;
     } on FirebaseAuthException catch (e) {
       return e.message;
     } catch (e) {
@@ -81,7 +117,7 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       await getCurrentUserData();
-      return null; // Success
+      return null;
     } on FirebaseAuthException catch (e) {
       return e.message;
     } catch (e) {
@@ -96,49 +132,86 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Create Barista Account (Admin only)
+  // ✅ Create Barista Account (Admin only) - FIXED (tidak logout, firestore masuk)
   Future<String?> createBaristaAccount({
     required String email,
     required String password,
     required String name,
     String? phoneNumber,
   }) async {
+    FirebaseAuth? secondaryAuth;
+    User? createdBaristaUser;
+
     try {
-      // Verify current user is admin
-      if (_currentUserData?.role != AppConstants.roleAdmin) {
+      final adminUser = _auth.currentUser;
+      if (adminUser == null) return 'User not logged in';
+
+      final adminUid = adminUser.uid;
+
+      // ✅ cek admin dari firestore
+      final roleRaw = await _getRoleFromFirestore(adminUid);
+      final role = (roleRaw ?? '').toLowerCase();
+      final adminRoleConst = AppConstants.roleAdmin.toLowerCase();
+
+      if (role != adminRoleConst) {
         return 'Only admin can create barista accounts';
       }
 
-      final currentAdminEmail = _auth.currentUser?.email;
-      
-      // Create user in Firebase Auth
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      // ✅ buat barista pakai secondary auth biar admin TIDAK pindah akun
+      secondaryAuth = await _getSecondaryAuth();
+
+      final cred = await secondaryAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Create user document in Firestore
+      createdBaristaUser = cred.user;
+      if (createdBaristaUser == null) {
+        return 'Failed to create barista user';
+      }
+
+      final baristaUid = createdBaristaUser.uid;
+
+      // ✅ tulis firestore pakai admin (karena admin masih login di main auth)
       await _firestore
           .collection(AppConstants.usersCollection)
-          .doc(userCredential.user!.uid)
+          .doc(baristaUid)
           .set({
         'email': email,
         'name': name,
         'role': AppConstants.roleBarista,
         'phoneNumber': phoneNumber,
         'createdAt': FieldValue.serverTimestamp(),
-        'createdBy': currentUser!.uid,
+        'createdBy': adminUid,
       });
 
-      await _auth.signOut();
-      
-      // We can't automatically re-login without the admin's password
-      print('[v0] Barista created successfully. Admin needs to login again.');
+      // ✅ logout secondary saja (bukan logout admin)
+      await secondaryAuth.signOut();
+
+      // refresh user data admin tetap
+      await getCurrentUserData();
 
       return null; // Success
     } on FirebaseAuthException catch (e) {
+      // rollback kalau auth barista sudah kebuat tapi firestore gagal/terhenti
+      if (createdBaristaUser != null) {
+        try {
+          await createdBaristaUser.delete();
+        } catch (_) {}
+      }
       return e.message;
     } catch (e) {
+      // rollback juga
+      if (createdBaristaUser != null) {
+        try {
+          await createdBaristaUser.delete();
+        } catch (_) {}
+      }
+      // pastikan secondary signout
+      try {
+        await secondaryAuth?.signOut();
+      } catch (_) {}
+
       return e.toString();
     }
   }

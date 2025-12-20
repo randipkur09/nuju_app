@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
 
 class MenuModel {
   final String id;
@@ -153,17 +155,27 @@ class MenuModel {
   bool get hasDiscount => discount != null && discount! > 0;
   
   // Helper method untuk format harga
-  String get formattedPrice {
-    return 'Rp${displayPrice.toInt()}';
-  }
-  
-  // Helper method untuk format harga asli jika ada diskon
-  String? get formattedOriginalPrice {
-    if (hasDiscount) {
-      return 'Rp${price.toInt()}';
-    }
-    return null;
-  }
+String get formattedPrice {
+  final formatter = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp',
+    decimalDigits: 0,
+  );
+  return formatter.format(displayPrice);
+}
+
+// Helper method untuk format harga asli jika ada diskon
+String? get formattedOriginalPrice {
+  if (!hasDiscount) return null;
+
+  final formatter = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp',
+    decimalDigits: 0,
+  );
+  return formatter.format(price);
+}
+
   
   // Helper method untuk mendapatkan persentase diskon
   String? get discountPercentage {

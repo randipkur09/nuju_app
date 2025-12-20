@@ -500,7 +500,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     children: [
                       if (menu.hasDiscount)
                         Text(
-                          'Rp ${menu.price.toStringAsFixed(0)}',
+                          'Rp ${menu.formattedPrice}',
                           style: const TextStyle(
                             color: Colors.grey,
                             fontSize: 12,
@@ -510,7 +510,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
                       if (menu.hasDiscount) const SizedBox(width: 4),
                       Text(
-                        'Rp ${menu.displayPrice.toStringAsFixed(0)}',
+                        menu.formattedPrice,
                         style: const TextStyle(
                           color: AppTheme.primaryColor,
                           fontWeight: FontWeight.w700,
