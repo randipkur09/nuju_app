@@ -179,26 +179,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               SizedBox(height: size.height * 0.02),
               
-              // Modern Header
+              // Modern Header dengan Logo
               Container(
                 width: 80,
                 height: 80,
                 margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.secondaryGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.secondaryColor.withOpacity(0.3),
-                      blurRadius: 15,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.person_add_alt_1_rounded,
-                  size: 36,
-                  color: Colors.white,
+                
+                child: Image.asset(
+                  'assets/images/NUJU_LOGO.png',
+                  fit: BoxFit.contain,
                 ),
               ),
               

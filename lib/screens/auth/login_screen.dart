@@ -51,6 +51,34 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    final authService = context.read<AuthService>();
+    final error = await authService.signInWithGoogle();
+
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text(error)),
+            ],
+          ),
+          backgroundColor: AppTheme.secondaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -65,26 +93,14 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               SizedBox(height: size.height * 0.05),
               
-              // Hero Section with Gradient
+              // Hero Section with Logo
               Center(
                 child: Container(
                   width: 120,
                   height: 120,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.coffee_maker_outlined,
-                    size: 56,
-                    color: Colors.white,
+                  child: Image.asset(
+                    'assets/images/NUJU_LOGO.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
@@ -321,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         _buildSocialButton(
                           icon: Icons.g_mobiledata,
                           color: Color(0xFF4285F4),
-                          onTap: () {},
+                          onTap: _isLoading ? null : _handleGoogleSignIn,
                         ),
                         const SizedBox(width: 16),
                         _buildSocialButton(
@@ -395,7 +411,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildSocialButton({
     required IconData icon,
     required Color color,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -403,7 +419,7 @@ class _LoginScreenState extends State<LoginScreen> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: color,
+          color: onTap == null ? color.withOpacity(0.5) : color,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
