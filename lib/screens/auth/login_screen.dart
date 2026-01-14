@@ -51,34 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-
-    final authService = context.read<AuthService>();
-    final error = await authService.signInWithGoogle();
-
-    setState(() => _isLoading = false);
-
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Expanded(child: Text(error)),
-            ],
-          ),
-          backgroundColor: AppTheme.secondaryColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -330,32 +302,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     const SizedBox(height: 32),
                     
-                    // Social Login (Optional) - Modern touch
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildSocialButton(
-                          icon: Icons.g_mobiledata,
-                          color: Color(0xFF4285F4),
-                          onTap: _isLoading ? null : _handleGoogleSignIn,
-                        ),
-                        const SizedBox(width: 16),
-                        _buildSocialButton(
-                          icon: Icons.facebook,
-                          color: Color(0xFF1877F2),
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 16),
-                        _buildSocialButton(
-                          icon: Icons.email,
-                          color: AppTheme.accentColor,
-                          onTap: () {},
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
                     // Register Link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -403,36 +349,6 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: size.height * 0.05),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: onTap == null ? color.withOpacity(0.5) : color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 24,
         ),
       ),
     );

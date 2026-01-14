@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 import '../utils/constants.dart';
 
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   User? get currentUser => _auth.currentUser;
 
@@ -128,61 +126,15 @@ class AuthService extends ChangeNotifier {
   }
 
   // Sign In with Google
-  Future<String?> signInWithGoogle() async {
-    try {
-      final googleUser = await _googleSignIn.signIn();
-      
-      if (googleUser == null) {
-        return 'Google sign in cancelled';
-      }
 
-      final googleAuth = await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await _auth.signInWithCredential(credential);
-      final user = userCredential.user;
-
-      if (user == null) {
-        return 'Failed to sign in with Google';
-      }
-
-      // Check if user exists in Firestore
-      final userDoc = await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(user.uid)
-          .get();
-
-      if (!userDoc.exists) {
-        // Create new user document
-        await _firestore
-            .collection(AppConstants.usersCollection)
-            .doc(user.uid)
-            .set({
-          'email': user.email,
-          'name': user.displayName ?? 'User',
-          'role': AppConstants.roleCustomer,
-          'photoUrl': user.photoURL,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      await getCurrentUserData();
-      return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message;
-    } catch (e) {
-      return e.toString();
-    }
-  }
 
   // Sign Out
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('Error signing out: $e');
+    }
     _currentUserData = null;
     notifyListeners();
   }
