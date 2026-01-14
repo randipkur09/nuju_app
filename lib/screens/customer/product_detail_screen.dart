@@ -6,7 +6,7 @@ import '../../utils/theme.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final MenuModel product;
-  final Function(MenuModel, int)? onAddToCart;
+  final Function(MenuModel, int, String?)? onAddToCart;
 
   const ProductDetailScreen({
     super.key,
@@ -22,13 +22,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final FavoritesService _favoritesService = FavoritesService();
   int _quantity = 1;
   String? _specialNotes;
+  String _selectedSize = 'Medium'; // Default size
   bool _isFavorited = false;
   bool _isLoadingFavorite = true;
+  
+  final List<String> _sizes = ['Small', 'Medium', 'Large'];
 
   @override
   void initState() {
     super.initState();
     _checkFavoriteStatus();
+  }
+
+  // Check if product category requires size selection
+  bool _showSizeSelector() {
+    final category = widget.product.category.toLowerCase();
+    return category == 'coffee' || 
+           category == 'non-coffee';
+  }
+
+  // Get price based on selected size
+  double _getPriceForSize() {
+    if (!_showSizeSelector() || widget.product.sizePrices == null) {
+      return widget.product.displayPrice;
+    }
+    return widget.product.sizePrices![_selectedSize] ?? widget.product.displayPrice;
   }
 
   Future<void> _checkFavoriteStatus() async {
@@ -694,7 +712,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
-    final totalPrice = widget.product.displayPrice * _quantity;
+    final totalPrice = _getPriceForSize() * _quantity;
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -718,6 +736,89 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Size Selection - Only for Coffee, Non-Coffee, and Nuju Ceban
+            if (_showSizeSelector())
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select Size:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: _sizes.map((size) {
+                      final isSelected = _selectedSize == size;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedSize = size;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppTheme.primaryColor : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    size,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? Colors.white : AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (widget.product.sizePrices != null && widget.product.sizePrices!.containsKey(size))
+                                    Text(
+                                      'Rp${widget.product.sizePrices![size]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.')}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: isSelected ? Colors.white : AppTheme.textSecondary,
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      'Rp${widget.product.displayPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.')}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: isSelected ? Colors.white : AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            
+            if (_showSizeSelector())
+              const SizedBox(height: 16),
+            
             Row(
               children: [
                 Text(
@@ -819,7 +920,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     onPressed: widget.product.isAvailable
                         ? () {
                             if (widget.onAddToCart != null) {
-                              widget.onAddToCart!(widget.product, _quantity);
+                              final size = _showSizeSelector() ? _selectedSize : null;
+                              widget.onAddToCart!(widget.product, _quantity, size);
                             }
                             Navigator.pop(context);
                           }

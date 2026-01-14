@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // ✅ tambah
+import 'package:intl/intl.dart'; 
 import '../../models/order_model.dart';
 import '../../services/firestore_service.dart';
 import '../../utils/theme.dart';
@@ -9,7 +9,7 @@ import '../../utils/theme.dart';
 class CustomerOrdersScreen extends StatelessWidget {
   const CustomerOrdersScreen({Key? key}) : super(key: key);
 
-  // ✅ formatter Rupiah titik
+
   String _formatRupiah(num value) {
     final f = NumberFormat.currency(
       locale: 'id_ID',

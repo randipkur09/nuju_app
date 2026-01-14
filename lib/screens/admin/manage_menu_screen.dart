@@ -261,6 +261,20 @@ class ManageMenuScreen extends StatelessWidget {
             const SizedBox(width: 4),
             IconButton(
               icon: Icon(
+                Icons.edit_rounded,
+                color: AppTheme.primaryColor,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddMenuScreen(menuToEdit: menu),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: Icon(
                 Icons.delete_rounded,
                 color: Colors.red.shade400,
               ),

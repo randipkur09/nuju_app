@@ -7,6 +7,7 @@ class OrderItem {
   int quantity;
   final double price;
   final String imageUrl;
+  final String? size; // Small, Medium, Large
 
   OrderItem({
     required this.menuId,
@@ -14,6 +15,7 @@ class OrderItem {
     required this.quantity,
     required this.price,
     this.imageUrl = '',
+    this.size,
   });
 
   // ✅ formatter rupiah
@@ -36,6 +38,7 @@ class OrderItem {
       'quantity': quantity,
       'price': price,
       'imageUrl': imageUrl,
+      'size': size,
     };
   }
 
@@ -46,6 +49,7 @@ class OrderItem {
       quantity: map['quantity'] ?? 0,
       price: (map['price'] ?? 0).toDouble(),
       imageUrl: map['imageUrl'] ?? '',
+      size: map['size'],
     );
   }
 }

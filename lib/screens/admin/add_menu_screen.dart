@@ -5,7 +5,9 @@ import '../../services/firestore_service.dart';
 import '../../utils/theme.dart';
 
 class AddMenuScreen extends StatefulWidget {
-  const AddMenuScreen({Key? key}) : super(key: key);
+  final MenuModel? menuToEdit;
+
+  const AddMenuScreen({Key? key, this.menuToEdit}) : super(key: key);
 
   @override
   State<AddMenuScreen> createState() => _AddMenuScreenState();
@@ -17,12 +19,38 @@ class _AddMenuScreenState extends State<AddMenuScreen> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   final _imageUrlController = TextEditingController();
+  final _smallPriceController = TextEditingController();
+  final _mediumPriceController = TextEditingController();
+  final _largePriceController = TextEditingController();
   
   String _selectedCategory = 'Coffee';
   bool _isAvailable = true;
   bool _isLoading = false;
+  bool _useCustomSizePrices = false;
 
-  final List<String> _categories = ['Coffee', 'Non-Coffee', 'Food', 'Snack'];
+  final List<String> _categories = ['Nuju Ceban', 'Coffee', 'Non-Coffee', 'Food', 'Snack'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill form jika edit
+    if (widget.menuToEdit != null) {
+      _nameController.text = widget.menuToEdit!.name;
+      _descriptionController.text = widget.menuToEdit!.description;
+      _priceController.text = widget.menuToEdit!.price.toString();
+      _imageUrlController.text = widget.menuToEdit!.imageUrl;
+      _selectedCategory = widget.menuToEdit!.category;
+      _isAvailable = widget.menuToEdit!.isAvailable;
+      
+      // Pre-fill size prices jika ada
+      if (widget.menuToEdit!.sizePrices != null && widget.menuToEdit!.sizePrices!.isNotEmpty) {
+        _useCustomSizePrices = true;
+        _smallPriceController.text = (widget.menuToEdit!.sizePrices!['Small'] ?? '').toString();
+        _mediumPriceController.text = (widget.menuToEdit!.sizePrices!['Medium'] ?? '').toString();
+        _largePriceController.text = (widget.menuToEdit!.sizePrices!['Large'] ?? '').toString();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -30,16 +58,21 @@ class _AddMenuScreenState extends State<AddMenuScreen> {
     _descriptionController.dispose();
     _priceController.dispose();
     _imageUrlController.dispose();
+    _smallPriceController.dispose();
+    _mediumPriceController.dispose();
+    _largePriceController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditMode = widget.menuToEdit != null;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Add Menu Item',
-          style: TextStyle(
+        title: Text(
+          isEditMode ? 'Edit Menu Item' : 'Add Menu Item',
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -48,9 +81,10 @@ class _AddMenuScreenState extends State<AddMenuScreen> {
         elevation: 0,
       ),
       backgroundColor: AppTheme.backgroundColor,
+      resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
         child: Form(
           key: _formKey,
           child: Column(
@@ -211,6 +245,135 @@ class _AddMenuScreenState extends State<AddMenuScreen> {
                 },
               ),
               const SizedBox(height: 20),
+
+              // Size Prices Toggle (hanya untuk kategori tertentu)
+              if (_selectedCategory == 'Coffee' || _selectedCategory == 'Non-Coffee')
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Custom Size Prices',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        Switch(
+                          value: _useCustomSizePrices,
+                          onChanged: (value) {
+                            setState(() {
+                              _useCustomSizePrices = value;
+                            });
+                          },
+                          activeColor: AppTheme.primaryColor,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_useCustomSizePrices)
+                      Column(
+                        children: [
+                          // Small Price
+                          Text(
+                            'Small Price (Rp)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _smallPriceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            decoration: InputDecoration(
+                              hintText: 'e.g., 25000',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.surfaceColor,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          // Medium Price
+                          Text(
+                            'Medium Price (Rp)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _mediumPriceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            decoration: InputDecoration(
+                              hintText: 'e.g., 30000',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.surfaceColor,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          // Large Price
+                          Text(
+                            'Large Price (Rp)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _largePriceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            decoration: InputDecoration(
+                              hintText: 'e.g., 35000',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.surfaceColor,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                  ],
+                ),
 
               // Category
               Text(
@@ -381,9 +544,9 @@ class _AddMenuScreenState extends State<AddMenuScreen> {
                             strokeWidth: 2.5,
                           ),
                         )
-                      : const Text(
-                          'Save Menu Item',
-                          style: TextStyle(
+                      : Text(
+                          widget.menuToEdit != null ? 'Update Menu Item' : 'Save Menu Item',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -407,30 +570,84 @@ class _AddMenuScreenState extends State<AddMenuScreen> {
     });
 
     try {
-      final menuItem = MenuModel(
-        id: '',
-        name: _nameController.text,
-        description: _descriptionController.text,
-        price: double.parse(_priceController.text),
-        category: _selectedCategory,
-        imageUrl: _imageUrlController.text.isEmpty 
-            ? 'https://via.placeholder.com/150' 
-            : _imageUrlController.text,
-        isAvailable: _isAvailable,
-        createdAt: DateTime.now(),
-        createdBy: 'admin', // Default admin ID
-      );
+      final firestoreService = FirestoreService();
+      
+      if (widget.menuToEdit != null) {
+        // Update mode
+        final data = {
+          'name': _nameController.text,
+          'description': _descriptionController.text,
+          'price': double.parse(_priceController.text),
+          'category': _selectedCategory,
+          'imageUrl': _imageUrlController.text.isEmpty 
+              ? 'https://via.placeholder.com/150' 
+              : _imageUrlController.text,
+          'isAvailable': _isAvailable,
+        };
 
-      await FirestoreService().addMenuItem(menuItem);
+        // Add size prices jika ada
+        if (_useCustomSizePrices && 
+            _smallPriceController.text.isNotEmpty && 
+            _mediumPriceController.text.isNotEmpty && 
+            _largePriceController.text.isNotEmpty) {
+          data['sizePrices'] = {
+            'Small': double.parse(_smallPriceController.text),
+            'Medium': double.parse(_mediumPriceController.text),
+            'Large': double.parse(_largePriceController.text),
+          };
+        }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Menu item added successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        await firestoreService.updateMenuItem(
+          menuId: widget.menuToEdit!.id,
+          data: data,
         );
-        Navigator.pop(context);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Menu item updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        // Add mode
+        final menuItem = MenuModel(
+          id: '',
+          name: _nameController.text,
+          description: _descriptionController.text,
+          price: double.parse(_priceController.text),
+          category: _selectedCategory,
+          imageUrl: _imageUrlController.text.isEmpty 
+              ? 'https://via.placeholder.com/150' 
+              : _imageUrlController.text,
+          isAvailable: _isAvailable,
+          createdAt: DateTime.now(),
+          createdBy: 'admin',
+          sizePrices: (_useCustomSizePrices && 
+                      _smallPriceController.text.isNotEmpty && 
+                      _mediumPriceController.text.isNotEmpty && 
+                      _largePriceController.text.isNotEmpty)
+              ? {
+                  'Small': double.parse(_smallPriceController.text),
+                  'Medium': double.parse(_mediumPriceController.text),
+                  'Large': double.parse(_largePriceController.text),
+                }
+              : null,
+        );
+
+        await firestoreService.addMenuItem(menuItem);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Menu item added successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {

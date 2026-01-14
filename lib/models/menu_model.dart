@@ -22,6 +22,7 @@ class MenuModel {
   final double? discount;
   final double? discountedPrice;
   final List<String>? tags;
+  final Map<String, double>? sizePrices; // {Small: 40000, Medium: 50000, Large: 60000}
 
   MenuModel({
     required this.id,
@@ -43,6 +44,7 @@ class MenuModel {
     this.discount,
     this.discountedPrice,
     this.tags,
+    this.sizePrices,
   });
 
   factory MenuModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -95,6 +97,11 @@ class MenuModel {
       discount: data['discount'] != null ? (data['discount'] as num).toDouble() : null,
       discountedPrice: data['discountedPrice'] != null ? (data['discountedPrice'] as num).toDouble() : null,
       tags: parseStringList(data['tags']),
+      sizePrices: data['sizePrices'] != null 
+          ? Map<String, double>.from(
+              (data['sizePrices'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble()))
+            )
+          : null,
     );
   }
 
@@ -138,6 +145,10 @@ class MenuModel {
     
     if (tags != null && tags!.isNotEmpty) {
       map['tags'] = tags;
+    }
+    
+    if (sizePrices != null && sizePrices!.isNotEmpty) {
+      map['sizePrices'] = sizePrices;
     }
     
     return map;

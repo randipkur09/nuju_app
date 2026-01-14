@@ -6,6 +6,7 @@ import '../../services/firestore_service.dart';
 import '../../utils/theme.dart';
 import 'customer_orders_screen.dart';
 import 'customer_favorites_screen.dart';
+import 'customer_profile_screen.dart';
 import 'cart_screen.dart';
 import 'product_detail_screen.dart';
 import '../../services/auth_service.dart';
@@ -22,6 +23,50 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   int _selectedIndex = 0;
   final List<OrderItem> _cartItems = [];
   String _selectedCategory = 'All';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  // Callback untuk add to cart
+  void _handleAddToCart(BuildContext context, MenuModel product, int quantity, String? size) {
+    setState(() {
+      _cartItems.add(OrderItem(
+        menuId: product.id,
+        menuName: product.name,
+        price: product.displayPrice,
+        quantity: quantity,
+        imageUrl: product.imageUrl,
+        size: size,
+      ));
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text('$quantity× ${product.name} added to cart'),
+          ],
+        ),
+        backgroundColor: AppTheme.primaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +74,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       _buildHomeContent(),
       const CustomerOrdersScreen(),
       CustomerFavoritesScreen(
-        onAddToCart: (product, quantity) {
-          _addToCartWithQuantity(product, quantity);
+        onAddToCart: (product, quantity, size) {
+          _handleAddToCart(context, product, quantity, size);
         },
       ),
     ];
@@ -98,45 +143,19 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.logout_outlined),
-            onPressed: () async {
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: AppTheme.backgroundColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    'Logout',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  content: const Text('Are you sure you want to logout?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                      ),
-                      child: const Text('Logout'),
-                    ),
-                  ],
+            icon: const Icon(Icons.person_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CustomerProfileScreen(),
                 ),
               );
-
-              if (shouldLogout == true && mounted) {
-                await AuthService().signOut();
-              }
             },
+            style: IconButton.styleFrom(
+              foregroundColor: AppTheme.textPrimary,
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: screens[_selectedIndex],
@@ -196,117 +215,398 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    return Column(
-      children: [
-        _buildCategoryFilter(),
-        Expanded(
-          child: StreamBuilder<List<MenuModel>>(
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Search Bar
+          _buildSearchBar(),
+          
+          const SizedBox(height: 16),
+          
+          // Featured/Recommended Section
+          _buildRecommendedSection(),
+          
+          const SizedBox(height: 24),
+          
+          // Category Filter
+          _buildCategoryFilter(),
+          
+          const SizedBox(height: 16),
+          
+          // Menu Items Grid
+          _buildMenuItemsGrid(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value.toLowerCase();
+          });
+        },
+        decoration: InputDecoration(
+          hintText: 'Search menu...',
+          hintStyle: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: AppTheme.primaryColor,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? GestureDetector(
+                  onTap: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: AppTheme.textSecondary,
+                  ),
+                )
+              : null,
+          filled: true,
+          fillColor: AppTheme.surfaceColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: AppTheme.primaryColor,
+              width: 2,
+            ),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+        ),
+        style: TextStyle(
+          color: AppTheme.textPrimary,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendedSection() {
+    return Container(
+      color: AppTheme.surfaceColor,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Recommended For You',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<List<MenuModel>>(
             stream: _firestoreService.getAllMenuItems(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppTheme.primaryColor,
-                  ),
-                );
-              }
-
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.coffee_outlined,
-                        size: 64,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No menu items available',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                return const SizedBox.shrink();
               }
 
-              List<MenuModel> menuItems = snapshot.data!
-                  .where((item) =>
-                      _selectedCategory == 'All' ||
-                      item.category == _selectedCategory)
-                  .toList();
+              // Get featured items or first 3 items
+                  final featured = snapshot.data!
+                    .where((item) => item.isFeatured)
+                    .toList();
 
-              return GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.7,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                final others = snapshot.data!
+                    .where((item) => !item.isFeatured)
+                    .toList();
+
+                featured.shuffle();
+                others.shuffle();
+
+                final itemsToShow = [
+                  ...featured.take(2),
+                  ...others.take(3),
+                ].take(3).toList();
+
+              return SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: itemsToShow.length,
+                  itemBuilder: (context, index) {
+                    final item = itemsToShow[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProductDetailScreen(
+                                product: item,
+                                onAddToCart: (product, quantity, size) {
+                                  _handleAddToCart(context, product, quantity, size);
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        child: _buildRecommendedCard(item),
+                      ),
+                    );
+                  },
                 ),
-                itemCount: menuItems.length,
-                itemBuilder: (context, index) {
-                  return _buildMenuCard(menuItems[index]);
-                },
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedCard(MenuModel item) {
+    return Container(
+      width: 160,
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image
+           Expanded(
+  child: ClipRRect(
+    borderRadius: const BorderRadius.vertical(
+      top: Radius.circular(16),
+    ),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          item.imageUrl,
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey.shade100,
+              child: Icon(
+                Icons.coffee_outlined,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
+            );
+          },
         ),
       ],
+    ),
+  ),
+),
+          
+          // Info
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Rp${item.displayPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.')}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItemsGrid() {
+    return StreamBuilder<List<MenuModel>>(
+      stream: _firestoreService.getAllMenuItems(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.coffee_outlined,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No menu items available',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        List<MenuModel> menuItems = snapshot.data!
+            .where((item) {
+              final matchesCategory = _selectedCategory == 'All' ||
+                  item.category == _selectedCategory;
+              final matchesSearch = _searchQuery.isEmpty ||
+                  item.name.toLowerCase().contains(_searchQuery) ||
+                  item.description.toLowerCase().contains(_searchQuery);
+              return matchesCategory && matchesSearch;
+            })
+            .toList();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(8),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.7,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: menuItems.length,
+            itemBuilder: (context, index) {
+              return _buildMenuCard(menuItems[index]);
+            },
+          ),
+        );
+      },
     );
   }
 
   Widget _buildCategoryFilter() {
-    final categories = ['All', 'Coffee', 'Non-Coffee', 'Food', 'Snack'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        height: 40,
+        child: StreamBuilder<List<MenuModel>>(
+          stream: _firestoreService.getAllMenuItems(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SizedBox.shrink();
+            }
 
-    return Container(
-      height: 60,
-      color: AppTheme.backgroundColor,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final isSelected = _selectedCategory == category;
+            final categories = {'All'};
+            for (var item in snapshot.data!) {
+              categories.add(item.category);
+            }
+            final categoryList = categories.toList();
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedCategory = category;
-                });
+            return ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categoryList.length,
+              itemBuilder: (context, index) {
+                final category = categoryList[index];
+                final isSelected = _selectedCategory == category;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        category,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
               },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryColor
-                        : Colors.grey.shade300,
-                    width: 1.5,
-                  ),
-                ),
-                child: Text(
-                  category,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppTheme.textSecondary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -319,8 +619,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           MaterialPageRoute(
             builder: (context) => ProductDetailScreen(
               product: menu,
-              onAddToCart: (product, quantity) {
-                _addToCartWithQuantity(product, quantity);
+              onAddToCart: (product, quantity, size) {
+                _handleAddToCart(context, product, quantity, size);
               },
             ),
           ),
@@ -631,38 +931,5 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       ),
     );
   }
-
-  void _addToCartWithQuantity(MenuModel menu, int quantity) {
-    setState(() {
-      _cartItems.add(OrderItem(
-        menuId: menu.id,
-        menuName: menu.name,
-        price: menu.displayPrice,
-        quantity: quantity,
-        imageUrl: menu.imageUrl,
-      ));
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text('$quantity× ${menu.name} added to cart'),
-          ],
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 }
+

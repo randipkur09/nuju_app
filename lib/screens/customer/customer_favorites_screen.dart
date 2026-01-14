@@ -7,7 +7,7 @@ import '../../utils/theme.dart';
 import 'product_detail_screen.dart';
 
 class CustomerFavoritesScreen extends StatefulWidget {
-  final Function(MenuModel, int)? onAddToCart;
+  final Function(MenuModel, int, String?)? onAddToCart;
 
   const CustomerFavoritesScreen({
     super.key,
@@ -521,7 +521,7 @@ class _CustomerFavoritesScreenState extends State<CustomerFavoritesScreen> {
                       onPressed: menu.isAvailable
                           ? () {
                               if (widget.onAddToCart != null) {
-                                widget.onAddToCart!(menu, 1);
+                                widget.onAddToCart!(menu, 1, 'Medium');
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Row(
