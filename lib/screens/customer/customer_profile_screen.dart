@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
+import 'package:nujucoffee/screens/auth/splash_screen.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({Key? key}) : super(key: key);
@@ -23,38 +24,48 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     final authService = context.read<AuthService>();
     await authService.getCurrentUserData();
   }
+Future<void> _handleLogout() async {
+  final rootContext = context;
 
-  Future<void> _handleLogout() async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+  showDialog(
+    context: rootContext,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            final authService = rootContext.read<AuthService>();
+
+            // 1. Tutup dialog
+            Navigator.of(dialogContext).pop();
+
+            // 2. Logout
+            await authService.signOut();
+
+            if (!mounted) return;
+
+            // 3. Ke halaman login (hapus semua page sebelumnya)
+             Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const SplashScreen(),
+              ),
+              (route) => false,
+            );
+          },
+          child: const Text(
+            'Logout',
+            style: TextStyle(color: Colors.red),
           ),
-          TextButton(
-            onPressed: () async {
-              final authService = context.read<AuthService>();
-              await authService.signOut();
-              if (mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/auth',
-                  (route) => false,
-                );
-              }
-            },
-            child: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
